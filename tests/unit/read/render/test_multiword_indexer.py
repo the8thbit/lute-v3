@@ -31,6 +31,12 @@ zws = "\u200B"  # zero-width space
             ["a", "a", "a", "b"],
             [(f"a{zws}a", 0), (f"a{zws}a", 1)],
         ),
+        (
+            "canonical unicode equivalents",
+            [f"কালো{zws}ছায়া"],
+            ["কালো", "ছায়া"],
+            [(f"কালো{zws}ছায়া", 0)],
+        ),
         ("bound check term at end", ["a"], ["b", "c", "a"], [("a", 2)]),
     ],
 )
@@ -55,3 +61,15 @@ def test_can_search_multiple_times_with_different_tokens():
     results = list(mw.search_all(["b", "a"]))
     assert len(results) == 1, "one match"
     assert results[0] == ("a", 1)
+
+
+def test_canonical_collision_prefers_exact_spelling():
+    "Canonical collisions return the spelling used in the content."
+    mw = MultiwordTermIndexer()
+    canonical = f"কালো{zws}ছায়া"
+    legacy = f"কালো{zws}ছায়া"
+    mw.add(canonical)
+    mw.add(legacy)
+
+    assert list(mw.search_all(["কালো", "ছায়া"])) == [(canonical, 0)]
+    assert list(mw.search_all(["কালো", "ছায়া"])) == [(legacy, 0)]

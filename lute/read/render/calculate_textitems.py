@@ -23,6 +23,7 @@ import re
 from collections import Counter
 from lute.models.term import Term
 from lute.read.render.text_item import TextItem
+from lute.utils.unicode_utils import canonical_key
 
 # from lute.utils.debug_helpers import DebugTimer
 
@@ -78,8 +79,10 @@ def _create_missing_status_0_terms(tokens, terms, language):
 
     original_word_tokens = {t.token for t in tokens if t.is_word}
     parser = language.parser
-    lc_word_tokens = {parser.get_lowercase(t): t for t in original_word_tokens}
-    term_text_lcs = {t.text_lc for t in terms}
+    lc_word_tokens = {
+        canonical_key(parser.get_lowercase(t)): t for t in original_word_tokens
+    }
+    term_text_lcs = {canonical_key(t.text_lc) for t in terms}
 
     missing_word_tokens = [
         original for lc, original in lc_word_tokens.items() if lc not in term_text_lcs
@@ -195,10 +198,12 @@ def get_textitems(tokens, terms, language, multiword_term_indexer=None):
     # dt.step("new_unknown_terms")
 
     all_terms = terms + new_unknown_terms
-    text_to_term = {dt.text_lc: dt for dt in all_terms}
+    exact_text_to_term = {dt.text_lc: dt for dt in all_terms}
+    text_to_term = {canonical_key(dt.text_lc): dt for dt in all_terms}
 
     tokens_orig = [t.token for t in tokens]
     tokens_lc = [language.parser.get_lowercase(t) for t in tokens_orig]
+    canonical_tokens_lc = [canonical_key(t) for t in tokens_lc]
 
     textitems = []
 
@@ -209,7 +214,9 @@ def get_textitems(tokens, terms, language, multiword_term_indexer=None):
             text_orig = zws.join(tokens_orig[index : index + count])
         text_lc = zws.join(tokens_lc[index : index + count])
         sentence_number = tokens[index].sentence_number
-        term = text_to_term.get(text_lc, None)
+        term = exact_text_to_term.get(text_lc)
+        if term is None:
+            term = text_to_term.get(canonical_key(text_lc))
         ti = _make_textitem(index, text_orig, text_lc, count, sentence_number, term)
         textitems.append(ti)
 
@@ -221,13 +228,15 @@ def get_textitems(tokens, terms, language, multiword_term_indexer=None):
     # Multiword terms.
     if multiword_term_indexer is not None:
         for r in multiword_term_indexer.search_all(tokens_lc):
-            mwt = text_to_term[r[0]]
+            mwt = exact_text_to_term.get(r[0], text_to_term[canonical_key(r[0])])
             count = mwt.token_count
             _add_textitem(r[1], r[0], count)
         # dt.step(f"get mw textitems w indexer")
     else:
-        multiword_terms = [t.text_lc for t in all_terms if t.token_count > 1]
-        for e in get_string_indexes(multiword_terms, zws.join(tokens_lc)):
+        multiword_terms = [
+            canonical_key(t.text_lc) for t in all_terms if t.token_count > 1
+        ]
+        for e in get_string_indexes(multiword_terms, zws.join(canonical_tokens_lc)):
             count = e[0].count(zws) + 1
             _add_textitem(e[1], e[0], count)
         # dt.step("mw textitems without indexer")

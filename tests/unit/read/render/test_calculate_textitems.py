@@ -84,6 +84,21 @@ def test_case_not_considered_for_matches(english):
     assert_renderable_equals(english, data, ["DATA HERE"], expected)
 
 
+def test_canonical_collision_prefers_exact_spelling(bengali):
+    "Canonically equivalent terms retain the metadata of the exact spelling."
+    canonical = Term(bengali, "ছায়া")
+    canonical.translation = "canonical"
+    legacy = Term(bengali, "ছায়া")
+    # Simulate a term saved before text_lc values were normalized.
+    legacy.text_lc = "ছায়া"
+    legacy.translation = "legacy"
+    tokens = make_tokens(["ছায়া"])
+
+    for terms in ([canonical, legacy], [legacy, canonical]):
+        textitems = get_textitems(tokens, terms, bengali)
+        assert textitems[0].term.translation == "legacy"
+
+
 def test_term_found_in_multiple_places(english):
     "Term can be in a few places."
     data = [

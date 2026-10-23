@@ -149,6 +149,11 @@ def fixture_hindi(app_context):
     return _get_test_language("Hindi")
 
 
+@pytest.fixture(name="bengali")
+def fixture_bengali(app_context):
+    return _get_test_language("Bengali")
+
+
 @pytest.fixture(name="generic")
 def fixture_generic(app_context):
     return _get_test_language("Generic")

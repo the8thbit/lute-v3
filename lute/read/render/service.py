@@ -10,6 +10,7 @@ from lute.models.term import Term
 from lute.parse.base import ParsedToken
 from lute.read.render.calculate_textitems import get_textitems as calc_get_textitems
 from lute.read.render.multiword_indexer import MultiwordTermIndexer
+from lute.utils.unicode_utils import canonical_key
 
 # from lute.utils.debug_helpers import DebugTimer
 
@@ -62,11 +63,12 @@ class Service:
         # code.
 
         zws = "\u200B"  # zero-width space
-        content = zws + zws.join(text_lcs) + zws
+        canonical_text_lcs = [canonical_key(t) for t in text_lcs]
+        content = zws + zws.join(canonical_text_lcs) + zws
 
         # Method 1:
         reclist = self._get_multiword_terms(language)
-        return [p[1] for p in reclist if f"{zws}{p[1]}{zws}" in content]
+        return [p[1] for p in reclist if f"{zws}{canonical_key(p[1])}{zws}" in content]
 
         ## # Method 2: use the model.
         ## contained_term_qry = self.session.query(Term).filter(
@@ -116,6 +118,7 @@ class Service:
 
         parser = language.parser
         text_lcs = [parser.get_lowercase(t.token) for t in tokens]
+        canonical_text_lcs = {canonical_key(text_lc) for text_lc in text_lcs}
 
         # Step 1: get the multiwords in the content.
         if kwtree is None:
@@ -142,6 +145,7 @@ class Service:
         #     WHERE WoLgID=:langid and WoTextLC in ({keys_placeholders})""")
         # sql = sql.bindparams(language.id, *text_lcs)
         # results = self.session.execute(sql, param_dict).fetchall()
+        text_lcs.extend(canonical_text_lcs)
         text_lcs.extend(mword_terms)
         tok_strings = list(set(text_lcs))
         terms_matching_tokens_qry = self.session.query(Term).filter(

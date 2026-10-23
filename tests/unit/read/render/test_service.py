@@ -84,6 +84,13 @@ def test_turkish_find_all_in_string(turkish, app_context):
     _run_scenario(turkish, "Işık İçin.", ["ışık", "için"])
 
 
+def test_bengali_canonical_unicode_equivalents_match(bengali, app_context):
+    "Canonically equivalent Bengali spellings refer to the same term."
+    add_terms(bengali, ["ছায়া"])
+
+    _run_scenario(bengali, "কালো ছায়া", ["ছায়া"])
+
+
 def test_smoke_get_paragraphs(spanish, app_context):
     """
     Smoke test to get paragraph information.
